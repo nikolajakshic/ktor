@@ -5,7 +5,6 @@
 package io.ktor.client.tests
 
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.client.tests.utils.*
 import io.ktor.utils.io.*
 import kotlin.test.*
@@ -36,6 +35,18 @@ class DownloadTest : ClientLoader() {
         test { client ->
             val size = client.get<ByteReadChannel>("http://www.google.com/").readRemaining().remaining
             assertTrue(size > 0)
+        }
+    }
+
+    @Test
+    fun testDownload8175() = clientTests {
+        test { client ->
+            repeat(100) {
+                println(it)
+                val uri =
+                    "https://raw.githubusercontent.com/ssp/ktor/4f1986df68e3594714ea12949c8af8274be99d01/ktor-client/ktor-client-apache/jvm/test/io/ktor/client/engine/apache/8175.txt"
+                client.get<String>(uri)
+            }
         }
     }
 }

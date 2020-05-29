@@ -21,7 +21,7 @@ internal suspend fun CloseableHttpAsyncClient.sendRequest(
 ): HttpResponseData = suspendCancellableCoroutine { continuation ->
     val requestTime = GMTDate()
 
-    val consumer = ApacheResponseConsumerDispatching(callContext, requestData) { rawResponse, body ->
+    val consumer = ApacheResponseConsumer(callContext, requestData) { rawResponse, body ->
         val statusLine = rawResponse.statusLine
 
         val status = HttpStatusCode(statusLine.statusCode, statusLine.reasonPhrase)

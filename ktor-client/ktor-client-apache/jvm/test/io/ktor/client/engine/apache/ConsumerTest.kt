@@ -56,7 +56,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun testCreating() {
-        ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }.responseCompleted(BasicHttpContext())
@@ -64,7 +64,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun smokeTest() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -87,7 +87,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun emptyContent() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -110,7 +110,7 @@ class ConsumerTest : CoroutineScope {
         // for some response kinds (HEAD, status NoContent as so on) consumeContent is not called
         // so we have completed immediately after response received
 
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -126,7 +126,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun consumeBeforeResponseReceived() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -153,7 +153,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun suspendSmokeTest() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -198,7 +198,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun integrationTest() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -267,7 +267,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun lastChunkReadTest() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -292,7 +292,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun testChannelCancellationBeforeIoControl() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
@@ -309,7 +309,7 @@ class ConsumerTest : CoroutineScope {
 
     @Test
     fun testChannelCancellationWithIoControl() {
-        val consumer = ApacheResponseConsumerDispatching(coroutineContext, null) { response, channel ->
+        val consumer = ApacheResponseConsumer(coroutineContext, null) { response, channel ->
             this.receivedResponse = response
             this.channel = channel
         }
