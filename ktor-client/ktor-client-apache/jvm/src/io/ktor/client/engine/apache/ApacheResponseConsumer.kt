@@ -4,28 +4,41 @@
 
 package io.ktor.client.engine.apache
 
-import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.utils.io.*
-import kotlinx.atomicfu.*
 import kotlinx.coroutines.*
 import org.apache.http.*
 import org.apache.http.nio.*
 import org.apache.http.nio.protocol.*
 import org.apache.http.protocol.*
-import java.net.*
-import java.nio.*
 import kotlin.coroutines.*
 
+@OptIn(InternalCoroutinesApi::class)
 internal class ApacheResponseConsumer(
-    override val coroutineContext: CoroutineContext,
-    private val requestData: HttpRequestData?,
-    private val block: (HttpResponse, ByteReadChannel) -> Unit
+    val parentContext: CoroutineContext,
+    private val requestData: HttpRequestData
 ) : HttpAsyncResponseConsumer<Unit>, CoroutineScope {
     private val interestController = InterestControllerHolder()
 
-    private val channel = ByteChannel()
-    private val contentChannel: ByteReadChannel = channel
+    private val consumerJob = Job()
+    override val coroutineContext: CoroutineContext = parentContext + consumerJob
+
+    private val channel = ByteChannel().also {
+        it.attachJob(consumerJob)
+    }
+
+    private val responseDeferred = CompletableDeferred<HttpResponse>()
+
+    val responseChannel: ByteReadChannel = channel
+
+    init {
+        coroutineContext[Job]?.invokeOnCompletion(onCancelling = true) { cause ->
+            if (cause != null) {
+                responseDeferred.completeExceptionally(cause)
+                responseChannel.cancel(cause)
+            }
+        }
+    }
 
     override fun consumeContent(decoder: ContentDecoder, ioctrl: IOControl) {
         var result = 0
@@ -37,7 +50,7 @@ internal class ApacheResponseConsumer(
         } while (result > 0)
 
         if (result < 0 || decoder.isCompleted) {
-            channel.close()
+            close()
             return
         }
 
@@ -51,21 +64,19 @@ internal class ApacheResponseConsumer(
     }
 
     override fun failed(cause: Exception) {
-        val mappedCause = when {
-            cause is ConnectException && cause.isTimeoutException() -> ConnectTimeoutException(requestData!!, cause)
-            cause is java.net.SocketTimeoutException -> SocketTimeoutException(requestData!!, cause)
-            else -> cause
-        }
-
-        channel.cancel(CancellationException("Failed to execute request", mappedCause))
+        val mappedCause = mapCause(cause, requestData)
+        consumerJob.completeExceptionally(mappedCause)
+        responseDeferred.completeExceptionally(mappedCause)
+        responseChannel.cancel(mappedCause)
     }
 
     override fun cancel(): Boolean {
-        channel.cancel()
         return true
     }
 
     override fun close() {
+        channel.close()
+        consumerJob.complete()
     }
 
     override fun getException(): Exception? = channel.closedCause as? Exception
@@ -79,6 +90,8 @@ internal class ApacheResponseConsumer(
     }
 
     override fun responseReceived(response: HttpResponse) {
-        block(response, contentChannel)
+        responseDeferred.complete(response)
     }
+
+    suspend fun waitForResponse(): HttpResponse = responseDeferred.await()
 }

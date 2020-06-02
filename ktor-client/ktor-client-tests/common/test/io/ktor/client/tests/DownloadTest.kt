@@ -33,7 +33,8 @@ class DownloadTest : ClientLoader() {
     @Test
     fun testEchoWithChannelBody() = clientTests {
         test { client ->
-            val size = client.get<ByteReadChannel>("http://www.google.com/").readRemaining().remaining
+            val channel = client.get<ByteReadChannel>("http://www.google.com/")
+            val size = channel.readRemaining().remaining
             assertTrue(size > 0)
         }
     }

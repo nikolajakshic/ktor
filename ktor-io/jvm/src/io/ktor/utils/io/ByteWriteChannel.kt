@@ -77,6 +77,8 @@ actual interface ByteWriteChannel {
      *
      * @param min amount of bytes available for write, should be positive
      * @param block to be invoked when at least [min] bytes free capacity available
+     *
+     * @return number of consumed bytes or -1 if the block wasn't executed.
      */
     fun writeAvailable(min: Int = 1, block: (ByteBuffer) -> Unit): Int
 

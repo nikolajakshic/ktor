@@ -1604,13 +1604,14 @@ internal open class ByteBufferChannel(
         require(min > 0) { "min should be positive" }
         require(min <= 4088) { "Min should be less than buffer size: $min" }
 
-        val writeAvailable = writeAvailable(min, block)
-        if (writeAvailable > 0) {
-            return
-        }
+        while (true) {
+            val writeAvailable = writeAvailable(min, block)
+            if (writeAvailable >= 0) {
+                break
+            }
 
-        awaitFreeSpaceOrDelegate(min, block)
-        writeAvailable(min, block)
+            awaitFreeSpaceOrDelegate(min, block)
+        }
     }
 
     private suspend fun awaitFreeSpaceOrDelegate(min: Int, block: (ByteBuffer) -> Unit) {
