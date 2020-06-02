@@ -175,5 +175,8 @@ actual interface ByteWriteChannel {
      * It does nothing when invoked on a closed channel.
      */
     actual fun flush()
+
+    @ExperimentalIoApi
+    actual suspend fun awaitFreeSpace()
 }
 

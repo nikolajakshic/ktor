@@ -1188,6 +1188,11 @@ internal open class ByteBufferChannel(
         return writeInt(java.lang.Float.floatToRawIntBits(f))
     }
 
+    @ExperimentalIoApi
+    override suspend fun awaitFreeSpace() {
+        writeSuspend(1)
+    }
+
     override suspend fun writeAvailable(src: ByteBuffer): Int {
         joining?.let { resolveDelegation(this, it)?.let { return it.writeAvailable(src) } }
 
@@ -1558,6 +1563,7 @@ internal open class ByteBufferChannel(
         require(min <= 4088) { "min should be positive" }
 
         var result = 0
+        var written = false
 
         writing { dst, state ->
             val locked = state.tryWriteAtLeast(min)
@@ -1585,26 +1591,31 @@ internal open class ByteBufferChannel(
                     // we use completeRead in spite of that it is write block
                     // we don't need to resume write as we are already in writing block
                 }
+
+                written = true
             }
         }
 
+        if (!written) return -1
         return result
     }
 
     override suspend fun write(min: Int, block: (ByteBuffer) -> Unit) {
         require(min > 0) { "min should be positive" }
+        require(min <= 4088) { "Min should be less than buffer size: $min" }
 
-        if (writeAvailable(min, block) > 0) {
+        val writeAvailable = writeAvailable(min, block)
+        if (writeAvailable > 0) {
             return
         }
 
-        return writeBlockSuspend(min, block)
+        awaitFreeSpaceOrDelegate(min, block)
+        writeAvailable(min, block)
     }
 
-    private suspend fun writeBlockSuspend(min: Int, block: (ByteBuffer) -> Unit) {
+    private suspend fun awaitFreeSpaceOrDelegate(min: Int, block: (ByteBuffer) -> Unit) {
         writeSuspend(min)
         joining?.let { resolveDelegation(this, it)?.let { return it.write(min, block) } }
-        return write(min, block)
     }
 
     override suspend fun writeWhile(block: (ByteBuffer) -> Boolean) {
@@ -2155,7 +2166,7 @@ internal open class ByteBufferChannel(
         return result
     }
 
-    override suspend fun <A : kotlin.text.Appendable> readUTF8LineTo(out: A, limit: Int) =
+    override suspend fun <A : Appendable> readUTF8LineTo(out: A, limit: Int): Boolean =
         readUTF8LineToAscii(out, limit)
 
     override suspend fun readUTF8Line(limit: Int): String? {
@@ -2186,18 +2197,18 @@ internal open class ByteBufferChannel(
         return readRemainingSuspend(limit, headerSizeHint)
     }
 
-    private suspend fun readRemainingSuspend(limit: Long, headerSizeHint: Int): ByteReadPacket {
-        return buildPacket(headerSizeHint) {
-            var remaining = limit
-            writeWhile { buffer ->
-                if (buffer.writeRemaining.toLong() > remaining) {
-                    buffer.resetForWrite(remaining.toInt())
-                }
-
-                val rc = readAsMuchAsPossible(buffer)
-                remaining -= rc
-                remaining > 0L && readSuspend(1)
+    private suspend fun readRemainingSuspend(
+        limit: Long, headerSizeHint: Int
+    ): ByteReadPacket = buildPacket(headerSizeHint) {
+        var remaining = limit
+        writeWhile { buffer ->
+            if (buffer.writeRemaining.toLong() > remaining) {
+                buffer.resetForWrite(remaining.toInt())
             }
+
+            val rc = readAsMuchAsPossible(buffer)
+            remaining -= rc
+            remaining > 0L && readSuspend(1)
         }
     }
 

@@ -29,10 +29,12 @@ internal class ApacheResponseConsumer(
 
     override fun consumeContent(decoder: ContentDecoder, ioctrl: IOControl) {
         var result = 0
-        channel.writeAvailable {
-            result = decoder.read(it)
-        }
-        // Reader should call resume after read
+
+        do {
+            channel.writeAvailable {
+                result = decoder.read(it)
+            }
+        } while (result > 0)
 
         if (result < 0 || decoder.isCompleted) {
             channel.close()
@@ -41,6 +43,10 @@ internal class ApacheResponseConsumer(
 
         if (result == 0) {
             interestController.suspendInput(ioctrl)
+            GlobalScope.launch(Dispatchers.Unconfined) {
+                channel.awaitFreeSpace()
+                interestController.resumeInputIfPossible()
+            }
         }
     }
 
