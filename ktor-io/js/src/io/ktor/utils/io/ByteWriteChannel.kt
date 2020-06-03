@@ -109,11 +109,8 @@ actual interface ByteWriteChannel {
      */
     actual suspend fun writeFloat(f: Float)
 
-    /**
-     * Invokes [block] when at least 1 byte is available for write.
-     */
     @ExperimentalIoApi
-    public actual fun onSpaceAvailable(block: () -> Unit)
+    public actual suspend fun awaitFreeSpace()
 
     /**
      * Closes this channel with an optional exceptional [cause].

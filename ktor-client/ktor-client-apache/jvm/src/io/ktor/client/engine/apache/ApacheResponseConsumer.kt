@@ -6,6 +6,7 @@ package io.ktor.client.engine.apache
 
 import io.ktor.client.request.*
 import io.ktor.utils.io.*
+import kotlinx.atomicfu.*
 import kotlinx.coroutines.*
 import org.apache.http.*
 import org.apache.http.nio.*
@@ -20,9 +21,10 @@ internal class ApacheResponseConsumer(
 ) : HttpAsyncResponseConsumer<Unit>, CoroutineScope {
     private val interestController = InterestControllerHolder()
 
-    private val consumerJob = Job()
+    private val consumerJob = Job(parentContext[Job])
     override val coroutineContext: CoroutineContext = parentContext + consumerJob
 
+    private val waiting = atomic(false)
     private val channel = ByteChannel().also {
         it.attachJob(consumerJob)
     }
@@ -41,8 +43,9 @@ internal class ApacheResponseConsumer(
     }
 
     override fun consumeContent(decoder: ContentDecoder, ioctrl: IOControl) {
-        var result = 0
+        check(!waiting.value)
 
+        var result = 0
         do {
             channel.writeAvailable {
                 result = decoder.read(it)
@@ -56,10 +59,13 @@ internal class ApacheResponseConsumer(
 
         if (result == 0) {
             interestController.suspendInput(ioctrl)
-            GlobalScope.launch(Dispatchers.Unconfined) {
+            launch(Dispatchers.Unconfined) {
+                check(!waiting.getAndSet(true))
                 channel.awaitFreeSpace()
+                check(waiting.getAndSet(false))
                 interestController.resumeInputIfPossible()
             }
+
         }
     }
 

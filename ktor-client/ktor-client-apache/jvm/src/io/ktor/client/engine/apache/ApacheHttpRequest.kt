@@ -25,10 +25,7 @@ internal suspend fun CloseableHttpAsyncClient.sendRequest(
     val consumer = ApacheResponseConsumer(callContext, requestData)
 
     val callback = object : FutureCallback<Unit> {
-        override fun failed(exception: Exception) {
-            println("Failed")
-        }
-
+        override fun failed(exception: Exception) {}
         override fun completed(result: Unit) {}
         override fun cancelled() {}
     }
