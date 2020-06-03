@@ -20,7 +20,7 @@ import kotlinx.serialization.modules.*
 @OptIn(
     ImplicitReflectionSerializer::class, UnstableDefault::class
 )
-class KotlinxSerializer(
+public class KotlinxSerializer(
     private val json: Json = Json(DefaultJsonConfiguration)
 ) : JsonSerializer {
 
@@ -41,8 +41,8 @@ class KotlinxSerializer(
         /**
          * Default [Json] configuration for [KotlinxSerializer].
          */
-        val DefaultJsonConfiguration: JsonConfiguration = JsonConfiguration(
-            isLenient = true,
+        public val DefaultJsonConfiguration: JsonConfiguration = JsonConfiguration(
+            isLenient = false,
             ignoreUnknownKeys = false,
             serializeSpecialFloatingPointValues = true,
             useArrayPolymorphism = false
